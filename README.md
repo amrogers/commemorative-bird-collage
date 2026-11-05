@@ -4,12 +4,11 @@ Renders a [fugleramme](https://github.com/arnegiacomo/fugleramme)-style bird-art
 collage from a single day's eBird observations. Give it a date and an eBird region
 code, and it fetches every checklist, tallies species by frequency, matches each
 to a vintage 1800s plate or a modern illustrated sticker, scales birds by body mass,
-and packs them into a customisable shape. Three files come out:
+and packs them into a customisable shape. Two files come out:
 
 | Output | Default size | Description |
 |---|---|---|
 | `sonoma_wedding_birds.png` | 12 × 8 in | Landscape print — birds numbered, key underneath |
-| `sonoma_wedding_puzzle.png` | 18.9 × 25.2 in | Portrait jigsaw — birds packed inside a heart with corner flourishes |
 | `sonoma_wedding_species_list.png` | 8.5 × 11 in | Species-list card with checklist counts |
 
 > No preview image is included by default. If you'd like to add one, open a PR or
@@ -84,51 +83,13 @@ art = "vintage"   # "vintage": 1800s plates + kacho-e woodblock fill-ins
 ### Which outputs to make (`cfg$outputs`)
 
 ```r
-outputs = c("print", "puzzle", "list")   # remove any you don't need
+outputs = c("print", "list")   # remove any you don't need
 ```
 
-### Print and puzzle sizes
+### Print size (`cfg$print`)
 
-`cfg$print` and `cfg$puzzle` control paper size, DPI, and font sizes (inches / pt).
-The defaults give a 12 × 8 in print and an 18.9 × 25.2 in jigsaw (5 670 × 7 560 px),
-both at 300 dpi. Drop to `dpi = 200` on the puzzle if R runs short of memory.
-
-### Subtitle layout (`cfg$puzzle$subtitle_layout`)
-
-```r
-subtitle_layout = "split"    # "split"  — text flanks the shape, left and right
-                              # "bottom" — subtitle sits below the shape
-```
-
-### Shape (`cfg$puzzle$shape`)
-
-```r
-shape = list(
-  type      = "heart",    # "filled" (whole page), "heart", or path to .xlsx/.csv/.image
-  stretch   = TRUE,       # stretch to the page's proportions
-  height    = 1.0,        # share of the space between title and bottom margin
-  dip_round = 0.5,        # roundness of the heart's V notch (0 = sharp, 1 = shallow)
-  tip_round = 0.1         # roundness of the bottom point (0 = sharp, 0.6 = blunt)
-)
-```
-
-For a custom shape, point `type` at an `.xlsx` or `.csv` grid of 1s (birds) and
-0s (empty), or a black-and-white image (black = bird area).
-
-### Corner flourishes (`cfg$puzzle$corners`)
-
-```r
-corners = list(
-  file     = here::here("data", "corner_images", "oak_leaf.jpg"),
-  size_cm  = 7.7,        # longest side of each corner
-  inset_cm = 1.9,        # gap from the page edge
-  mirror   = TRUE,       # mirror into all four corners
-  remove   = "colour",   # background removal: "colour", "flood", or "none"
-  fuzz     = 15          # % colour-match tolerance; raise if a halo remains
-)
-```
-
-Set `file = NA` for no corner decoration.
+`cfg$print` controls paper size, DPI, and font sizes (inches / pt). The default
+gives a 12 × 8 in landscape print at 300 dpi.
 
 ### Custom bird cut-outs (`data/custom_birds/`)
 
@@ -155,7 +116,6 @@ commemorative-bird-collage/
 ├── output/                                           # git-ignored; created on first run
 │   └── vintage/
 │       ├── sonoma_wedding_birds.png
-│       ├── sonoma_wedding_puzzle.png
 │       ├── sonoma_wedding_species_list.png
 │       └── credits.txt
 ├── LICENSE
