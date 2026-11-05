@@ -1,0 +1,49 @@
+# API keys and credentials — never commit these
+ebird_api.txt
+.Renviron
+*.key
+*.token
+
+# Original/scratch scripts (not part of the public repo)
+code/sonoma_wedding_ebird.R
+code/Untitled-1.R
+
+# Generated output (re-created by the script)
+output/
+
+# Downloaded artwork (re-downloaded at runtime)
+data/art_cache/
+
+# Font files (some are licensed Office fonts, e.g. Modern No. 20)
+data/fonts/
+
+# Corner processing workspace (derived from data/corner_images/)
+data/corners/
+
+# Stray oak-leaf source images (not needed in the repo)
+data/corner_images/Oak_leaf_cutout.png
+data/ebird/Oak_leaves.jpg
+
+# AI upscaling workspace
+data/upscale/
+
+# Raw eBird checklist JSON — includes observer names; covered by eBird ToS
+data/ebird/*/
+
+# eBird taxonomy cache
+data/ebird/taxonomy.rds
+
+# R session clutter
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# Editor / tool settings
+.positron/
+.vscode/
+.claude/
+
+# OS noise
+.DS_Store
+Thumbs.db
