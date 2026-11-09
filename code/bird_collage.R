@@ -1,8 +1,8 @@
 # =============================================================================
-# Sonoma wedding birds - a static "fugleramme" print
+# Commemorative eBird poster - a static "fugleramme" print
 #
-# 1. Downloads every eBird checklist from Sonoma County (US-CA-097) on the
-#    wedding day (eBird API 2.0), and counts how many checklists (records)
+# 1. Downloads every eBird checklist from a region on a given date
+#    (eBird API 2.0), and counts how many checklists (records)
 #    reported each species.
 # 2. Matches each species to a picture, in one of two styles:
 #      "vintage" - hand-cut 1800s plates (fugleramme), with kacho-e woodblock
@@ -15,7 +15,7 @@
 #    (AVONET, compressed by mass^0.14), packed largest-first with no
 #    overlapping silhouettes, on a textured paper page, a number under each
 #    bird. Three outputs: a landscape print with a numbered key, a portrait
-#    jigsaw puzzle, and a species-list card for the puzzle box.
+#    portrait print, and a species-list card.
 #
 # Ported from: https://github.com/arnegiacomo/fugleramme
 #   src/fugleramme/render/collage.py  - sizing, shrink-to-fit search, labels
@@ -30,7 +30,7 @@
 #
 # Setup (once):
 #   install.packages(c("here", "rebird", "magick", "jsonlite", "dplyr", "systemfonts", "ragg"))
-#   (and "readxl" if your puzzle shape is an Excel file)
+#   (and "readxl" if your portrait shape is an Excel file)
 #   eBird API key goes in <project_dir>/ebird_api.txt (just the key on one line).
 #
 # Each art style writes to its own folder (output/vintage/, output/modern/).
@@ -48,7 +48,7 @@ library(dplyr)
 
 cfg <- list(
   # ---- The day ----
-  wedding_date = "2026-10-10",
+  event_date   = "2026-10-10",
   region       = "US-CA-097",     # Sonoma County
   # "county": every checklist in the region.  "venue": only checklists within
   # radius_km of the venue.
@@ -76,7 +76,7 @@ cfg <- list(
   # Fonts family name exactly as on fonts.google.com (downloaded into
   # data/fonts/ the first time), an installed font's name, or a .ttf/.otf path.
 
-  outputs      = c("print", "puzzle", "list"),   # which of the three to make
+  outputs      = c("print", "portrait", "list"),   # which of the three to make
 
   # ---- 1. Landscape print: numbers by the birds, a numbered key underneath ----
   print = list(
@@ -89,8 +89,8 @@ cfg <- list(
     key_pt      = 7               # the key (numbers and names)
   ),
 
-  # ---- 2. The jigsaw puzzle: portrait, numbers by the birds, no key ----
-  puzzle = list(
+  # ---- 2. Portrait print: numbers by the birds, no key ----
+  portrait = list(
     width_in = 18.9, height_in = 25.2, dpi = 300,   # 5670 x 7560 px; drop dpi to 200 if R runs short of memory
     title_pt    = 68,
     number_font = "Modern No. 20",                  # Office font, C:/Windows/Fonts/MOD20.TTF
@@ -134,7 +134,7 @@ cfg <- list(
     )
   ),
 
-  # ---- 3. Species-list card for the puzzle box: every species, numbered ----
+  # ---- 3. Species-list card: every species, numbered ----
   # The list's type is sized automatically to fill the card. columns = "auto"
   # picks 1-4 for the largest type, or give a number.
   list_page = list(
@@ -152,13 +152,13 @@ cfg <- list(
 )
 
 cfg$art <- match.arg(cfg$art, c("vintage", "modern"))
-cfg$puzzle$subtitle_layout <- match.arg(cfg$puzzle$subtitle_layout, c("bottom", "split"))
+cfg$portrait$subtitle_layout <- match.arg(cfg$portrait$subtitle_layout, c("bottom", "split"))
 cfg$cache_dir  <- file.path(cfg$project_dir, "data", "art_cache")     # downloaded art, fonts, tables
 cfg$custom_dir <- file.path(cfg$project_dir, "data", "custom_birds")  # your own <genus-species>.png cut-outs
 cfg$out_dir    <- file.path(cfg$project_dir, "output", cfg$art)       # species lists, credits, the prints
 
-if (is.na(cfg$wedding_date)) stop("Set cfg$wedding_date first, e.g. \"2026-09-19\".")
-cfg$wedding_date <- as.Date(cfg$wedding_date)
+if (is.na(cfg$event_date)) stop("Set cfg$event_date first, e.g. \"2026-09-19\".")
+cfg$event_date <- as.Date(cfg$event_date)
 dir.create(cfg$out_dir, showWarnings = FALSE, recursive = TRUE)
 dir.create(cfg$custom_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -269,7 +269,7 @@ ebird_json <- function(path, cache, query = list()) {
 
 # The checklists submitted for one region or hotspot on the day (API max 200)
 day_feed <- function(region, dir) {
-  d <- cfg$wedding_date
+  d <- cfg$event_date
   f <- ebird_json(sprintf("product/lists/%s/%s", region, format(d, "%Y/%m/%d")),
                   file.path(dir, paste0("feed_", region, ".json")), list(maxResults = 200))
   if (!length(f) || !NROW(f)) return(data.frame())
@@ -282,7 +282,7 @@ day_feed <- function(region, dir) {
 # Every checklist for the day, one row per (checklist, report). Raw JSON is
 # kept in data/ebird/<date>/, so each checklist is downloaded once, ever.
 get_day_records <- function(cfg) {
-  dir <- file.path(cfg$project_dir, "data", "ebird", format(cfg$wedding_date))
+  dir <- file.path(cfg$project_dir, "data", "ebird", format(cfg$event_date))
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   near_venue <- function(lat, lng) cfg$mode != "venue" | is.na(lat) |
     haversine_km(cfg$venue[["lat"]], cfg$venue[["lng"]], lat, lng) <= cfg$radius_km
@@ -293,7 +293,7 @@ get_day_records <- function(cfg) {
   # up from each hotspot's own feed. Checklists at personal locations beyond
   # the 200 can't be reached this way, so the count is still a lower bound.
   if (nrow(feed) >= 200) {
-    since <- as.numeric(Sys.Date() - cfg$wedding_date) + 1
+    since <- as.numeric(Sys.Date() - cfg$event_date) + 1
     hs <- ebird_json(paste0("ref/hotspot/", cfg$region),
                      file.path(dir, "hotspots.json"),
                      c(list(fmt = "json"), if (since <= 30) list(back = since)))
@@ -311,7 +311,7 @@ get_day_records <- function(cfg) {
 
   feed <- feed[!is.na(feed$subId) & near_venue(feed$lat, feed$lng), ]
   sub  <- unique(feed$subId)
-  message(length(sub), " checklists on ", format(cfg$wedding_date, "%d %B %Y"))
+  message(length(sub), " checklists on ", format(cfg$event_date, "%d %B %Y"))
 
   first_error <- NULL
   per_list <- lapply(sub, function(id) {
@@ -338,7 +338,7 @@ get_day_records <- function(cfg) {
 # Delete it to rebuild, e.g. after late checklists come in. The file name
 # records the date, region and area, so changing those builds a new one.
 summary_file <- file.path(cfg$project_dir, "data", "ebird", sprintf(
-  "summary_%s_%s_%s.csv", format(cfg$wedding_date), cfg$region,
+  "summary_%s_%s_%s.csv", format(cfg$event_date), cfg$region,
   if (cfg$mode == "venue") sprintf("venue%gkm", cfg$radius_km) else "county"))
 
 if (file.exists(summary_file)) {
@@ -896,7 +896,7 @@ has_subtitle <- function() is.null(cfg$subtitle) || nzchar(cfg$subtitle)
 # "bottom" stacks them, "split" puts the first line on the left and the rest
 # on the right.
 subtitle_text <- function(where = "top") {
-  date  <- trimws(format(cfg$wedding_date, "%e %B %Y"))
+  date  <- trimws(format(cfg$event_date, "%e %B %Y"))
   birds <- sprintf("%s birds", format(sum(species$individuals, na.rm = TRUE), big.mark = ","))
   spp   <- sprintf("%d species", nrow(species))
   own   <- if (is.null(cfg$subtitle)) NULL else strsplit(cfg$subtitle, "\n", fixed = TRUE)[[1]]
@@ -928,7 +928,7 @@ draw_title <- function(canvas, page, y, with_sub = TRUE) {
   canvas
 }
 
-# The puzzle's subtitle at the foot of the page, one row per line: text, x,
+# The portrait's subtitle at the foot of the page, one row per line: text, x,
 # baseline y, size (output px), all centre-justified.
 subtitle_plan <- function(page, cut) {
   W <- page$W; H <- page$H; dpi <- page$dpi
@@ -1155,7 +1155,7 @@ corner_layout <- function(cut, page, scale = 1) {
 # ---- 8. The collage (collage.py _placements / _layout) -----------------------
 
 # `page` carries the page size (W, H px, dpi) and the text settings; the
-# puzzle's page also has subtitle_layout, shape and corners. The print has a
+# portrait's page also has subtitle_layout, shape and corners. The print has a
 # key (page$key) and its subtitle under the title.
 render_collage <- function(birds, out_file, page) {
   W <- page$W; H <- page$H; dpi <- page$dpi
@@ -1456,20 +1456,20 @@ page_of <- function(p, ...) {
   for (f in intersect(c("number_font", "key_font", "font"), names(p))) p[[f]] <- get_font(p[[f]])
   utils::modifyList(p, list(...))
 }
-out <- function(name) file.path(cfg$out_dir, paste0("sonoma_wedding_", name, ".png"))
+out <- function(name) file.path(cfg$out_dir, paste0("poster_", name, ".png"))
 
 # 1. Landscape print: numbers by the birds, the names key underneath
 if ("print" %in% cfg$outputs)
   render_collage(birds, out("birds"), page_of(cfg$print, key = TRUE))
 
-# 2. The jigsaw puzzle: portrait, numbers only, the subtitle at the foot
-if ("puzzle" %in% cfg$outputs) {
-  pz <- page_of(cfg$puzzle, key = FALSE)
-  message("Puzzle: ", pz$width_in, " x ", pz$height_in, " in at ", pz$dpi, " dpi (", pz$W, " x ", pz$H, " px)")
-  render_collage(birds, out("puzzle"), pz)
+# 2. Portrait print: numbers only, the subtitle at the foot
+if ("portrait" %in% cfg$outputs) {
+  pz <- page_of(cfg$portrait, key = FALSE)
+  message("Portrait: ", pz$width_in, " x ", pz$height_in, " in at ", pz$dpi, " dpi (", pz$W, " x ", pz$H, " px)")
+  render_collage(birds, out("portrait"), pz)
 }
 
-# 3. The species-list card for the puzzle box: every species, pictured and also recorded
+# 3. Species-list card: every species, pictured and also recorded
 if ("list" %in% cfg$outputs)
   render_species_list(species, out("species_list"), page_of(cfg$list_page))
 
@@ -1479,7 +1479,7 @@ utils::write.csv(credits, file.path(cfg$out_dir, "credits.csv"), row.names = FAL
 src <- unique(draw$source)
 writeLines(c(
   sprintf("Birds reported in Sonoma County on %s, from eBird (ebird.org).",
-          trimws(format(cfg$wedding_date, "%e %B %Y"))),
+          trimws(format(cfg$event_date, "%e %B %Y"))),
   if (any(!(src %in% c("avianvisitors", "huashu", "custom"))))
     c("Illustrations: hand-coloured 1800s plates cut by the fugleramme project",
       "(github.com/arnegiacomo/fugleramme), CC BY-SA 4.0. Per-plate sources in credits.csv."),
